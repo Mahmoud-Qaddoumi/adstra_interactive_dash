@@ -1,6 +1,5 @@
 from dash import Dash
 
-from callbacks_functions import network_callbacks
 from components.main import main_layout
 from dash import Output, Input
 from callbacks_functions.control_panel_callback import control_panel_input_list, masking_control_panel_callbacks
