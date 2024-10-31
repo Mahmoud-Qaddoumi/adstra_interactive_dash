@@ -49,7 +49,9 @@ selector_line_size_div = html.Div(children=[selector_label_line_size, line_size_
 selector_row = html.Div(children=[selector_1_div, selector_2_div, selector_circle_size_div, selector_circle_color_div,
                                   selector_line_color_div, selector_line_size_div],
                         style={'width': '100%', 'display': 'flex'})  # , "border": "2px black solid"
+
 network_row = html.Div(children=[selector_row,
-                                 html.Div(dcc.Graph(id='network_figure', animate=False), style=dict(width='100%'))],
+                                 html.Div(dcc.Graph(id='network_figure', animate=False), style=dict(width='100%')),
+                                 ],
                        style={'width': '100%'})
 

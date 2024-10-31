@@ -14,9 +14,6 @@ from callbacks_functions.network_callbacks import make_network_callbacks
 from components.network_graph import network_row
 
 
-
-
-
 app = Dash()
 app.layout = main_layout
 server = app.server
@@ -42,7 +39,7 @@ def update_graph(*args):
         dff = pd.read_json(StringIO(args[-1]), orient='split')
 
         time_fig = make_num_time_figs(df=dff, num_cols=args[0], date_col=datetime_col,
-                                                  anomaly_col=anomaly_col, cat_col=args[2], date_agg_col=args[1])
+                                      anomaly_col=anomaly_col, cat_col=args[2], date_agg_col=args[1])
         return time_fig
 
 
@@ -80,19 +77,16 @@ network_input.append(Input('intermediate-value', 'data'))
 
 @app.callback(network_output, network_input)
 def update_network(*args):
-    if len(args) > 1:
-        dff = pd.read_json(StringIO(args[-1]), orient='split')
-        # figs = make_network_callbacks(df=dff, left_col=args[0], right_col=args[1], color_col=args[2],
-        #                               anomaly_col=anomaly_col)
-        figs = make_network_callbacks(df=dff,
-                                      left_col=args[0],
-                                      right_col=args[1],
-                                      circle_size_col=args[2],
-                                      circle_color_col=args[3],
-                                      line_color_col=args[4],
-                                      line_size_col=args[5],
-                                      anomaly_col=anomaly_col)
-        return figs
+    figs = make_network_callbacks(df=pd.read_json(StringIO(args[-1]), orient='split'),
+                                  left_col=args[0],
+                                  right_col=args[1],
+                                  circle_size_col=args[2],
+                                  circle_color_col=args[3],
+                                  line_color_col=args[4],
+                                  line_size_col=args[5],
+                                  anomaly_col=anomaly_col)
+
+    return figs
 
 
 if __name__ == '__main__':
