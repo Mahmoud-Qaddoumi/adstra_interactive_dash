@@ -1,11 +1,11 @@
 from dash import html, dcc
-from configurations.configurations import numeric_cols, categorical_cols
+from configurations.configurations import num_cols, cat_cols
 
-if len(numeric_cols) > 1:
+if len(num_cols) > 1:
     selector_label = html.P(children="Numeric Column(s): ",
                             style={'textAlign': 'Left', 'verticalAlign': 'top', 'width': '100%'})
-    categorical_cols_with_no_agg = categorical_cols + ['No Aggregation']
-    num_selector = dcc.Checklist(id='numerical_cols_id', options=numeric_cols, value=numeric_cols, inline=True,
+    categorical_cols_with_no_agg = cat_cols + ['No Aggregation']
+    num_selector = dcc.Checklist(id='numerical_cols_id', options=num_cols, value=num_cols, inline=True,
                                  style={'display': 'flex', "margin-left": "0", "margin-right": "0", 'width': '100%'})
     date_agg_selector = html.P(children="Date Aggregation: ",
                                style={'textAlign': 'Left', 'verticalAlign': 'center', "margin-left": "0",
@@ -39,10 +39,10 @@ else:
                                              style={'width': '100%', 'textAlign': 'center'})],
                             style={'width': '100%'})
 
-if len(categorical_cols) > 1:
+if len(cat_cols) > 1:
     selector_label = html.P(children="Categorical Column: ",
                             style={'textAlign': 'Left', 'verticalAlign': 'top', 'width': '10%'})
-    cat_selector = dcc.Dropdown(id='categorical_cols_id', options=categorical_cols, value=categorical_cols[0],
+    cat_selector = dcc.Dropdown(id='categorical_cols_id', options=cat_cols, value=cat_cols[0],
                                 multi=False, searchable=False, style={'width': '35%'})
     agg_selector = html.P(children="Select Aggregation: ", style={'width': '15%', 'textAlign': 'Right'})
     agg_options = dcc.Dropdown(id='cat_agg_options_id', options=['day', 'month', 'week'], value=['day', 'month', 'week'][0],

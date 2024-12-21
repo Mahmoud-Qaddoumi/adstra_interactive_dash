@@ -3,8 +3,10 @@ import plotly.graph_objs as go
 from plotly.graph_objs import Figure
 import plotly.express as px
 
-def make_num_time_figs(df: pd.DataFrame, date_col: str, num_cols: list, anomaly_col: str, cat_col: str = 'No Aggregation',
-             date_agg_func: str = 'sum', date_agg_col: str = 'Actual Data') -> list[Figure]:
+
+def make_num_time_figs(df: pd.DataFrame, date_col: str, num_cols: list, anomaly_col: str,
+                       cat_col: str = 'No Aggregation',
+                       date_agg_func: str = 'sum', date_agg_col: str = 'Actual Data') -> list[Figure]:
     # ToDo: add selection for aggregation function so the user can select "sum", "Average" ...etc. for categorical agg.
     if cat_col is None or cat_col == 'No Aggregation':
         if date_agg_col is None or date_agg_col == 'Actual Data':
@@ -51,7 +53,7 @@ def make_num_time_figs(df: pd.DataFrame, date_col: str, num_cols: list, anomaly_
         # Time series trace
         time_traces.append(go.Scatter(x=df[date_col], y=df[col], xaxis='x1', yaxis='y',
                                       name=col, legendgroup=col,
-                                      mode=time_fig_markers, marker=dict(color=color), line=dict(color=color),
+                                      mode=time_fig_markers, marker=dict(color=color,size=10), line=dict(color=color),
                                       customdata=df.values, hovertemplate=hover_template,
                                       hoverlabel=dict(bgcolor='white', font_size=12, font_family="Arial")))
         # Violin trace
@@ -94,8 +96,9 @@ def make_num_time_figs(df: pd.DataFrame, date_col: str, num_cols: list, anomaly_
     result_fig = go.Figure(data=traces, layout=layout)
     return [result_fig]
 
+
 def group_dataframe(df: pd.DataFrame,
-                    datetime_col: str, # datetime column to make group by
+                    datetime_col: str,  # datetime column to make group by
                     cols_to_agg: list,
                     anomaly_col: str,
                     grouping: str,
@@ -115,17 +118,60 @@ def group_dataframe(df: pd.DataFrame,
         result.loc[result[anomaly_col] > 0, anomaly_col] = 1
     return result
 
-def make_cat_time_figs(df:pd.DataFrame, cat_col:str, date_col:str, anomaly_col:str,
+
+def make_cat_time_figs(df: pd.DataFrame, id_col: str, cat_col: str, date_col: str, anomaly_col: str,
                        date_agg_col: str = None) -> list[Figure]:
+    df.rename(columns={'is_anomaly': 'counts'}, inplace=True)
+    anomaly_col = 'counts'
+    df = df.drop_duplicates(subset=[id_col], keep='first')
+    df[cat_col] = df[cat_col].astype('str')
+    normal_df = df[df[anomaly_col] == False]
+    normal_df.loc[:, anomaly_col] = True
+    df = df[df[anomaly_col] == True]
+    df.to_pickle('test.pkl')
     df = group_dataframe(df=df, datetime_col=date_col, cols_to_agg=[anomaly_col], anomaly_col=anomaly_col,
-                         grouping=date_agg_col, cat_col=cat_col, aggregation_fun='count')
-    traces = [go.Bar(x=df.loc[df[cat_col]==temp_class, date_col],
-                     y=df.loc[df[cat_col]==temp_class, anomaly_col],
-                     name=temp_class) for temp_class in df[cat_col].unique()]
-    layout = go.Layout(title="Time Series - Categorical Features", barmode='group', legend=dict(orientation="h"), )
+                         grouping=date_agg_col, cat_col=cat_col, aggregation_fun='sum')
+    normal_df = group_dataframe(df=normal_df, datetime_col=date_col, cols_to_agg=[anomaly_col], anomaly_col=anomaly_col,
+                                grouping=date_agg_col, cat_col=cat_col, aggregation_fun='sum')
+    df.to_pickle('after_grouping.pkl')
+
+    colors = ['rgb(31, 119, 180)', 'rgb(255, 127, 14)', 'rgb(44, 160, 44)', 'rgb(214, 39, 40)', 'rgb(148, 103, 189)',
+              'rgb(140, 86, 75)', 'rgb(227, 119, 194)', 'rgb(127, 127, 127)', 'rgb(188, 189, 34)', 'rgb(23, 190, 207)',
+              'rgb(141, 211, 199)', 'rgb(255, 255, 179)', 'rgb(190, 186, 218)', 'rgb(251, 128, 114)',
+              'rgb(128, 177, 211)', 'rgb(253, 180, 98)', 'rgb(179, 222, 105)', 'rgb(252, 205, 229)',
+              'rgb(217, 217, 217)', 'rgb(188, 128, 189)']
+    hover_template = "<b>Date:</b> %{x}<br>"
+    exclude_cols = [date_col]
+
+    # Create hover template for all columns except date
+    for col in df.columns:
+        if col not in exclude_cols:
+            hover_template += f"<b>{col}:</b> %{{customdata[{list(df.columns).index(col)}]}}<br>"
+    hover_template += "<extra></extra>"
+
+    # Prepare customdata for both dataframes
+    normal_df['customdata'] = normal_df.values.tolist()
+    df['customdata'] = df.values.tolist()
+    traces = []
+    for i, temp_class in enumerate(df[cat_col].unique()):
+        color = colors[i]
+        traces.append(go.Bar(x=normal_df.loc[normal_df[cat_col] == temp_class, date_col],
+                             y=normal_df.loc[normal_df[cat_col] == temp_class, anomaly_col],
+                             marker_color=color,
+                             customdata=normal_df.loc[normal_df[cat_col] == temp_class].values.tolist(),
+                             hovertemplate=hover_template,
+                             name=f"{temp_class} - Normal"))
+        traces.append(go.Bar(x=df.loc[df[cat_col] == temp_class, date_col],
+                             y=df.loc[df[cat_col] == temp_class, anomaly_col],
+                             name=f"{temp_class} - Anomaly",
+                             customdata=df.loc[df[cat_col] == temp_class].values.tolist(),
+                             hovertemplate=hover_template,
+                             marker_color=color,
+                             marker_line_color='black',
+                             marker_line_width=4, ))
+    layout = go.Layout(title="Time Series - Categorical Features",
+                       barmode='group',
+                       legend=dict(orientation="h"),
+                       barcornerradius=5, )
     fig = go.Figure(data=traces, layout=layout)
     return [fig]
-
-
-
-

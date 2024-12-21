@@ -1,6 +1,9 @@
 from dash import html, dcc
-from configurations.configurations import (categorical_configurations, bool_configurations, time_configurations,
-                                           numeric_configurations)
+from configurations.configurations import (categorical_configurations,
+                                           bool_configurations,
+                                           time_configurations,
+                                           numeric_configurations,
+                                           target_col)
 
 if len(time_configurations.keys()) > 0:
     date_picker = dcc.DatePickerRange(id=time_configurations['id'],
@@ -14,18 +17,29 @@ if len(time_configurations.keys()) > 0:
                                       style={'width': '100%'},
                                       disabled=time_configurations['disabled'])
 else:
-    date_picker = html.P(children="No Time Column", style={'textAlign': 'center', 'width': '100%'})
+    date_picker = html.P(children="No Time Column",
+                         style={'textAlign': 'center', 'width': '100%'})
 
 if len(categorical_configurations) > 0:
-    categorical_list = [element for category in categorical_configurations for element in
-                        (html.P(children=category['label'], style={'width': '100%', 'textAlign': 'Left'}),
-                         dcc.Dropdown(id=category['id'], value=category['value'], options=category['options'],
-                                      multi=True, style={'width': '100%'}))]
+    categorical_list = []
+    for category in categorical_configurations:
+        if category['id'] == f"{target_col}_component_id":
+            print(category['options'][0])
+            categorical_list.append(
+                html.Div(children=[html.P(children=category['label'],
+                                          style={'width': '100%', 'textAlign': 'Left'}),
+                                   dcc.Dropdown(id=category['id'], value=category['options'][0],
+                                                options=category['options'], multi=False)]))
+        else:
+            categorical_list.append(html.Div(children=[html.P(children=category['label'],
+                                                              style={'width': '100%', 'textAlign': 'Left'}),
+                                                       dcc.Dropdown(id=category['id'], value=category['value'],
+                                                                    options=category['options'], multi=True, )]))
+
 else:
     categorical_list = html.P(children="No categorical Columns", style={'textAlign': 'center', 'width': '100%'})
 
 if len(bool_configurations) > 0:
-
     bool_list = [html.Div(children=[html.P(children=bool_case['label'], style={'width': '50%', 'textAlign': 'Left'}),
                                     dcc.Checklist(id=bool_case['id'], inline=True,
                                                   value=[option for option in bool_case['options']],
@@ -48,10 +62,11 @@ if len(numeric_configurations) > 0:
 else:
     num_list = html.P(children="No Numerical Columns", style={'textAlign': 'center', 'width': '100%'})
 
-apply_button = html.Button(children='Apply Filters', id='apply_filter_button', type='Danger',
+apply_button = html.Button(children='Apply Filters',
+                           id='apply_filter_button',
+                           type='Danger',
                            style={'width': '100%', 'background-color': '#DC3545', 'color': 'black', 'padding': '3px',
                                   "borderRadius": "10px"})
-
 control_panel = html.Div(children=[html.H3(children='Date Column:',
                                            style={'textAlign': 'left', 'width': '100%'}),
                                    html.Div(children=date_picker,

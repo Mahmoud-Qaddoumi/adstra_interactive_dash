@@ -5,13 +5,11 @@ from callbacks_functions.control_panel_callback import control_panel_input_list,
 import pandas as pd
 from configurations.functions import get_dash_callback_args
 from components.num_time_components import num_time_row, cat_row
-from configurations.configurations import anomaly_col, datetime_col, numeric_cols, categorical_cols
+from configurations.configurations import anomaly_col, datetime_col, num_cols, cat_cols, id_col
 from callbacks_functions.num_time_callback import make_num_time_figs, make_cat_time_figs
 from components.cat_num_components import cat_num_row
 from io import StringIO
 from callbacks_functions.cat_num_callbacks import make_cat_num_figs
-from callbacks_functions.network_callbacks import make_network_callbacks
-from components.network_graph import network_row
 
 
 app = Dash()
@@ -54,7 +52,8 @@ def update_cat_time_graph(*args):
         fig_list = make_cat_time_figs(df=dff, date_col=datetime_col,
                                       date_agg_col=args[1],
                                       anomaly_col=anomaly_col,
-                                      cat_col=args[0])
+                                      cat_col=args[0],
+                                      id_col=id_col)
         return fig_list
 
 
@@ -66,27 +65,9 @@ cat_row_input.append(Input('intermediate-value', 'data'))
 def update_cat_num_graph(*args):
     if len(args) > 1:
         dff = pd.read_json(StringIO(args[-1]), orient='split')
-        figs = make_cat_num_figs(df=dff, selected_cat_col=args[1], num_cols=args[0], cat_cols=categorical_cols,
+        figs = make_cat_num_figs(df=dff, selected_cat_col=args[1], num_cols=args[0], cat_cols=cat_cols,
                                  anomaly_col=anomaly_col)
         return figs
-
-
-network_output, network_input = get_dash_callback_args(network_row)
-network_input.append(Input('intermediate-value', 'data'))
-
-
-@app.callback(network_output, network_input)
-def update_network(*args):
-    figs = make_network_callbacks(df=pd.read_json(StringIO(args[-1]), orient='split'),
-                                  left_col=args[0],
-                                  right_col=args[1],
-                                  circle_size_col=args[2],
-                                  circle_color_col=args[3],
-                                  line_color_col=args[4],
-                                  line_size_col=args[5],
-                                  anomaly_col=anomaly_col)
-
-    return figs
 
 
 if __name__ == '__main__':

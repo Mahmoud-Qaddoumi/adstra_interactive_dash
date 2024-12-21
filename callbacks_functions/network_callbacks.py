@@ -1,7 +1,7 @@
-import networkx as nx
 import plotly.graph_objects as go
 import numpy as np
 from typing import List, Tuple, Dict, Optional
+from netgraph import Graph
 
 # ToDo: Network Graph 1- Make the Figure Directional Diagram.
 # ToDo: Network Graph 2- allow the user to change the places of the nodes using dash_cytoscape.
@@ -9,7 +9,6 @@ from typing import List, Tuple, Dict, Optional
 # ToDo: Network Graph 4- lines between nodes (less intersection).
 # ToDo: Network Graph 5- add counts to for colors options for nodes and edges.
 # ToDo: Network Graph 6- appear Anomalies in Visualization.
-
 
 
 def normalize_values(values, min_target, max_target):
@@ -52,6 +51,7 @@ def make_network_callbacks(df, left_col: str, right_col: str, circle_size_col: s
     anomaly_col: Column name for anomaly indicators
     """
     # Create edge list with associated data
+    df.to_pickle('testing.pkl')
     edges_with_data = []
 
     # Create node data mapping
@@ -60,7 +60,8 @@ def make_network_callbacks(df, left_col: str, right_col: str, circle_size_col: s
         edges_with_data.append({'source': row[left_col],
                                 'target': row[right_col],
                                 'line_size': row[line_size_col],
-                                'line_color': row[line_color_col]})
+                                'line_color': row[line_color_col],
+                                'anomaly': row[anomaly_col]})
         for node_col in [left_col, right_col]:
             node = row[node_col]
             if node not in node_data:
@@ -80,43 +81,70 @@ def create_network_graph(edges_with_data: List[dict], node_data: Dict[str, dict]
     edges_with_data: list of dicts containing edge information and styling data
     node_data: dict mapping node IDs to their attributes
     """
+    import networkx as nx
     # Create network graph
-    G = nx.Graph()
+    G = nx.DiGraph()
 
     # Add edges to graph
-    edges = [(edge['source'], edge['target']) for edge in edges_with_data]
-    G.add_edges_from(edges)
+    G.add_edges_from([(edge['source'], edge['target']) for edge in edges_with_data])
 
     # Calculate layout
-    pos = nx.spring_layout(G, k=1 / np.sqrt(len(G.nodes())), iterations=50)
-
-    # Process node sizes and colors
-    node_sizes = [node_data[node]['size'] for node in G.nodes()]
-    node_colors = [node_data[node]['color'] for node in G.nodes()]
-
-    # Normalize and convert to visual attributes
-    normalized_node_sizes = normalize_values(node_sizes, 10, 100)  # Scale to reasonable marker sizes
-    node_color_list = get_color_scale(node_colors, '#0000FF', '#FF0000')  # Blue to Red
+    # pos = nx.spring_layout(G, k=1 / np.sqrt(len(G.nodes())), iterations=50)
+    # pos = nx.multipartite_layout(G, subset_key="target")
+    pos  = pos=nx.spectral_layout(G)
 
     # Create edge traces with dynamic styling
     edge_traces = []
     for edge_data in edges_with_data:
         x0, y0 = pos[edge_data['source']]
         x1, y1 = pos[edge_data['target']]
+        # Calculate curve control points
+        dx = x1 - x0
+        dy = y1 - y0
+        dist = np.sqrt(dx * dx + dy * dy)
 
-        # Calculate curve
-        mid_x = (x0 + x1) / 2
-        mid_y = (y0 + y1) / 2
-        curve_x = [x0, mid_x + (y1 - y0) * 0.2, x1]
-        curve_y = [y0, mid_y - (x1 - x0) * 0.2, y1]
+        # Adjust curve based on distance
+        curve_strength = min(0.2, 2.0 / dist)
+
+        # Calculate perpendicular vector for control point
+        nx = -dy * curve_strength
+        ny = dx * curve_strength
+
+        # Create curved path
+        curve_x = [x0,  x0 + dx / 2 + nx, x1]
+        curve_y = [y0,  y0 + dy / 2 + ny, y1]
 
         # Get edge styling
-        line_width = normalize_values([edge_data['line_size']], 1, 3)[0]
+        line_width = normalize_values([edge_data['line_size']], 1, 5)[0]
         line_color = get_color_scale([edge_data['line_color']], '#008000', '#8B4513')[0]  # Green to Brown
 
-        edge_trace = go.Scatter(x=curve_x, y=curve_y, mode='lines', line=dict(width=line_width, color=line_color),
+        edge_trace = go.Scatter(x=curve_x, y=curve_y, mode='lines', line=dict(width=line_width, color=line_color, shape='spline'),
                                 hoverinfo='none')
         edge_traces.append(edge_trace)
+        # Add arrow
+        arrow_x = curve_x[-2:]
+        arrow_y = curve_y[-2:]
+        dx = arrow_x[1] - arrow_x[0]
+        dy = arrow_y[1] - arrow_y[0]
+        arrow_length = np.sqrt(dx * dx + dy * dy)
+
+        if arrow_length > 0:
+            arrow_head_x = arrow_x[1] - dx * 0.1
+            arrow_head_y = arrow_y[1] - dy * 0.1
+            arrow_trace = go.Scatter(x=[arrow_head_x, arrow_x[1], arrow_head_x],
+                                     y=[arrow_head_y + 0.05, arrow_y[1], arrow_head_y - 0.05],
+                                     mode='lines',
+                                     line=dict(width=line_width, color=line_color),
+                                     hoverinfo='none')
+            edge_traces.append(arrow_trace)
+
+    # Process node sizes and colors
+    node_sizes = [node_data[node]['size'] for node in G.nodes()]
+    node_colors = [node_data[node]['color'] for node in G.nodes()]
+
+    # Normalize and convert to visual attributes
+    normalized_node_sizes = normalize_values(node_sizes, 10, 50)  # Scale to reasonable marker sizes
+    node_color_list = get_color_scale(node_colors, '#0000FF', '#FF0000')  # Blue to Red
 
     # Create node trace
     node_x = []

@@ -1,6 +1,6 @@
 from dash import Input, State
 from configurations.configurations import categorical_configurations, numeric_configurations, bool_configurations, \
-    datetime_col, numeric_cols, categorical_cols, bool_cols
+    datetime_col, num_cols, cat_cols, bool_cols, target_col
 import pandas as pd
 
 
@@ -18,12 +18,11 @@ def control_panel_input_list(cat_config: dict = categorical_configurations,
 
     for bool_temp in bool_config:
         input_list.append(State(component_id=bool_temp['id'], component_property='value'))
-
     return input_list
 
 
-def masking_control_panel_callbacks(df: pd.DataFrame, temp_args: tuple, cat_list: list = categorical_cols,
-                                    num_list: list = numeric_cols, bool_list: list = bool_cols) -> pd.DataFrame:
+def masking_control_panel_callbacks(df: pd.DataFrame, temp_args: tuple, cat_list: list = cat_cols,
+                                    num_list: list = num_cols, bool_list: list = bool_cols) -> pd.DataFrame:
     mask = (df[datetime_col] >= pd.to_datetime(temp_args[1])) & (df[datetime_col] <= pd.to_datetime(temp_args[2]))
     for i, bool_col in enumerate(bool_list):
         args_index = i + 3 + len(cat_list) + len(num_list)
@@ -31,7 +30,10 @@ def masking_control_panel_callbacks(df: pd.DataFrame, temp_args: tuple, cat_list
 
     for i, cat in enumerate(cat_list):
         if temp_args[i + 3]:
-            mask = (df[cat].isin(temp_args[i + 3])) & mask
+            if cat == target_col:
+                mask = (df[cat] == temp_args[i + 3]) & mask
+            else:
+                mask = (df[cat].isin(temp_args[i + 3])) & mask
 
     for i, num_col in enumerate(num_list):
         args_index = i + 3 + len(cat_list)
